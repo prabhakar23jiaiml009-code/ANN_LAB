@@ -1,40 +1,41 @@
-# Hebbian Learning for Logic Gates
 import numpy as np
 
+def bipolar(x):
+    return np.where(x == 0, -1, 1)
 
-print("Choose logic gate: 1 for AND, 2 for OR")
-choice = int(input("Enter your choice: "))
+def predict(weights, X):
+    s = np.dot(X, weights)
+    return np.where(s >= 0, 1, -1)
 
-if choice == 1:
-    print("\nTraining for AND gate...\n")
-    X = np.array([[1, 1], [1, -1], [-1, 1], [-1, -1]])  # bipolar inputs
-    Y = np.array([[1], [-1], [-1], [-1]])               # AND gate (bipolar)
-elif choice == 2:
-    print("\nTraining for OR gate...\n")
-    X = np.array([[1, 1], [1, -1], [-1, 1], [-1, -1]])  # bipolar inputs
-    Y = np.array([[1], [1], [1], [-1]])                 # OR gate (bipolar)
+def train_hebb_verbose(X, y, lr=0.1, epochs=5):
+    w = np.zeros(X.shape[1])
+    for epoch in range(1, epochs + 1):
+        print(f"\nEpoch {epoch}")
+        for xi, yi in zip(X, y):
+            w += lr * yi * xi
+            print(f"Input: {xi}, Target: {yi}, Updated Weights: {w}")
+        preds = predict(w, X)
+        preds01 = np.where(preds == -1, 0, 1)
+        print(f"Predictions after epoch {epoch}: {preds01.tolist()}")
+    return w
+
+X = np.array([
+    [1, 0, 0],
+    [1, 0, 1],
+    [1, 1, 0],
+    [1, 1, 1]
+])
+
+choice = input("Enter gate (AND/OR): ").strip().upper()
+
+if choice == "AND":
+    targets = np.array([0, 0, 0, 1])
+elif choice == "OR":
+    targets = np.array([0, 1, 1, 1])
 else:
-    print("Invalid choice!")
+    print("Invalid choice! Please enter AND or OR.")
     exit()
 
-w = np.zeros((2, 1))
-b = 0
-
-
-print("Training using Hebbian Learning...\n")
-for i in range(len(X)):
-    x = X[i].reshape(2, 1)
-    y = Y[i][0]
-    w = w + x * y
-    b = b + y
-    print(f"After sample {i+1}: w = {w.T}, b = {b}")
-
-
-print("\nTesting...\n")
-for i in range(len(X)):
-    net = np.dot(X[i], w) + b
-    output = 1 if net >= 0 else -1
-    print(f"Input: {X[i]}  ->  Output: {output}  (Expected: {Y[i][0]})")
-
-print("\nFinal Weights:", w.T)
-print("Final Bias:", b)
+y = bipolar(targets)
+final_w = train_hebb_verbose(X, y, lr=0.2, epochs=5)
+print("\nFinal Weights:", final_w)
