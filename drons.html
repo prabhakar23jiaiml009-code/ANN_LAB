@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>3D Precision Swarm Scan - Ultra HD Edition</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary: #00f2ff;
+            --green: #10b981;
+            --orange: #f59e0b;
+            --red: #ef4444;
+            --glass-bg: rgba(15, 23, 42, 0.65);
+            --glass-border: rgba(255, 255, 255, 0.25);
+            --glass-card: rgba(255, 255, 255, 0.12);
+        }
+
+        * { 
+            box-sizing: border-box; 
+            user-select: none; 
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body, html { 
+            margin: 0; padding: 0; 
+            width: 100%; height: 100%; 
+            overflow: hidden; 
+            font-family: 'Rajdhani', sans-serif;
+            background: #000;
+            touch-action: none;
+        }
+
+        #canvas-container { 
+            width: 100vw; height: 100vh; 
+            position: absolute; top: 0; left: 0; 
+            z-index: 1; 
+        }
+
+        /* --- ULTRA HD GLASS UI OVERLAY --- */
+        .hud-overlay {
+            position: absolute; top: 0; left: 0; 
+            width: 100%; height: 100%; 
+            z-index: 10; pointer-events: none;
+            padding: 16px;
+            display: flex; flex-direction: column;
+            justify-content: space-between;
+            box-sizing: border-box;
+        }
+
+        .hud-overlay * { pointer-events: auto; }
+
+        /* Top Navigation Header */
+        .top-bar {
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px) saturate(180%);
+            -webkit-backdrop-filter: blur(16px) saturate(180%);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 10px 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .brand { display: flex; align-items: center; gap: 10px; }
+        
+        .pulse-beacon {
+            width: 10px; height: 10px; background: var(--primary);
+            border-radius: 50%; box-shadow: 0 0 12px var(--primary);
+            animation: pulse 1.5s infinite alternate ease-in-out;
+            flex-shrink: 0;
+        }
+
+        @keyframes pulse {
+            from { transform: scale(0.8); opacity: 0.6; }
+            to { transform: scale(1.25); opacity: 1; }
+        }
+
+        .brand-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 14px; font-weight: 900;
+            color: #ffffff; letter-spacing: 1.5px;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+            line-height: 1.2;
+        }
+
+        .brand-sub {
+            font-size: 9px; color: var(--primary); font-weight: 700;
+            letter-spacing: 1px; display: block;
+        }
+
+        .pills-group { 
+            display: flex; 
+            gap: 6px; 
+            align-items: center; 
+            flex-wrap: wrap;
+        }
+
+        .pill {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 4px 10px; border-radius: 20px;
+            color: #ffffff; font-size: 10px; font-weight: 700;
+            letter-spacing: 0.5px;
+            backdrop-filter: blur(10px);
+            display: flex; align-items: center; gap: 4px;
+            white-space: nowrap;
+        }
+
+        .pill-live {
+            border-color: rgba(16, 185, 129, 0.6); color: var(--green);
+            background: rgba(16, 185, 129, 0.15);
+            box-shadow: 0 0 8px rgba(16, 185, 129, 0.2);
+        }
+
+        /* Bottom Panel Layout */
+        .bottom-panel { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: flex-end; 
+            width: 100%;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .telemetry-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px) saturate(180%);
+            -webkit-backdrop-filter: blur(16px) saturate(180%);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 14px 18px; 
+            width: 320px;
+            max-width: 100%;
+            color: #ffffff;
+            box-shadow: 0 15px 30px rgba(0,0,0,0.3);
+        }
+
+        .card-header {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 10px; letter-spacing: 1.5px; font-weight: 700;
+            color: rgba(255, 255, 255, 0.85); margin-bottom: 10px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+
+        .data-row {
+            display: flex; justify-content: space-between;
+            align-items: center; margin-bottom: 6px;
+        }
+
+        .label { font-size: 12px; font-weight: 600; color: rgba(255, 255, 255, 0.85); }
+        .val { font-family: 'Orbitron', sans-serif; font-size: 13px; font-weight: 700; color: #ffffff; }
+
+        .status-tag {
+            padding: 2px 8px; border-radius: 6px; font-weight: 700;
+            font-size: 10px; letter-spacing: 0.5px;
+            background: rgba(245, 158, 11, 0.25); color: var(--orange);
+            border: 1px solid var(--orange);
+            box-shadow: 0 0 8px rgba(245, 158, 11, 0.2);
+        }
+
+        .progress-bar {
+            width: 100%; height: 6px; background: rgba(0,0,0,0.4);
+            border-radius: 8px; margin-top: 10px; overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .progress-fill {
+            height: 100%; width: 0%;
+            background: linear-gradient(90deg, var(--primary), var(--green));
+            box-shadow: 0 0 8px var(--primary);
+            transition: width 0.3s ease;
+        }
+
+        /* HD Controls & Actions */
+        .controls-group {
+            display: flex; gap: 8px; width: auto;
+        }
+
+        .btn-hd {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            color: #ffffff;
+            padding: 10px 14px; border-radius: 12px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 10px; font-weight: 700; letter-spacing: 0.5px;
+            cursor: pointer;
+            backdrop-filter: blur(12px);
+            transition: all 0.2s ease;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+            display: flex; align-items: center; justify-content: center; gap: 6px;
+            white-space: nowrap;
+        }
+
+        .btn-hd:hover, .btn-hd:active {
+            background: rgba(0, 242, 255, 0.25);
+            border-color: var(--primary);
+            box-shadow: 0 0 12px rgba(0, 242, 255, 0.4);
+        }
+
+        /* Mobile Breakpoint Adjustments */
+        @media (max-width: 600px) {
+            .hud-overlay { padding: 10px; }
+            .top-bar { padding: 8px 12px; border-radius: 12px; }
+            .brand-title { font-size: 12px; }
+            .brand-sub { font-size: 8px; }
+            .pills-group { display: none; } /* Hide extra pills on tiny screens to clear camera view */
+            
+            .bottom-panel {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 8px;
+            }
+
+            .telemetry-card {
+                width: 100%;
+                padding: 10px 14px;
+                border-radius: 12px;
+            }
+
+            .controls-group {
+                width: 100%;
+                justify-content: space-between;
+            }
+
+            .btn-hd {
+                flex: 1;
+                padding: 10px 8px;
+                font-size: 9px;
+            }
+        }
+    </style>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+
+    <div class="hud-overlay">
+        <!-- Top Clean HUD Bar -->
+        <div class="top-bar">
+            <div class="brand">
+                <div class="pulse-beacon"></div>
+                <div>
+                    <span class="brand-title">AEROSCAN ULTRA HD</span>
+                    <span class="brand-sub">TACTICAL SWARM SURVEY</span>
+                </div>
+            </div>
+            <div class="pills-group">
+                <div class="pill pill-live">● ONLINE</div>
+                <div class="pill">⚡ <span style="color:var(--green)">98%</span></div>
+                <div class="pill">📡 <span style="color:var(--primary)">12 SAT</span></div>
+            </div>
+        </div>
+
+        <!-- Bottom Clean Panel & Controls -->
+        <div class="bottom-panel">
+            <div class="telemetry-card">
+                <div class="card-header">
+                    <span>GRID MAPPING TELEMETRY</span>
+                    <span style="color: var(--primary); font-size: 9px;">FPS: <span id="fps-counter">60</span></span>
+                </div>
+                <div class="data-row">
+                    <span class="label">Swarm Mode</span>
+                    <span id="status-text" class="status-tag">EN ROUTE</span>
+                </div>
+                <div class="data-row">
+                    <span class="label">Mapped Sectors</span>
+                    <span class="val"><span id="cell-count">0</span> / 225</span>
+                </div>
+                <div class="data-row">
+                    <span class="label">Scan Velocity</span>
+                    <span class="val">0.25 m/s</span>
+                </div>
+                <div class="progress-bar">
+                    <div id="progress-fill" class="progress-fill"></div>
+                </div>
+            </div>
+
+            <div class="controls-group">
+                <button class="btn-hd" id="btn-pause">⏸ PAUSE</button>
+                <button class="btn-hd" id="btn-reset">🔄 RESET GRID</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="canvas-container"></div>
+
+    <script>
+        const container = document.getElementById('canvas-container');
+
+        // --- 1. Scene & Environment Setup ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87ceeb);
+        scene.fog = new THREE.FogExp2(0xb0e0e6, 0.005);
+
+        const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
+        
+        // Adjust initial camera distance depending on screen size
+        const isMobile = window.innerWidth <= 600;
+        camera.position.set(isMobile ? 55 : 40, isMobile ? 40 : 30, isMobile ? 65 : 50);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        
+        // Mobile performance optimization
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.5 : 2));
+        renderer.shadowMap.enabled = !isMobile; // Disable heavy dynamic shadows on small phones
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        container.appendChild(renderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.maxPolarAngle = Math.PI / 2 - 0.02;
+        controls.target.set(0, 3, 0);
+        controls.touches = {
+            ONE: THREE.TOUCH.ROTATE,
+            TWO: THREE.TOUCH.DOLLY_PAN
+        };
+
+        // --- 2. Lighting ---
+        scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+
+        const sunLight = new THREE.DirectionalLight(0xfffaed, 1.2);
+        sunLight.position.set(60, 90, 40);
+        if (!isMobile) {
+            sunLight.castShadow = true;
+            sunLight.shadow.mapSize.width = 1024;
+            sunLight.shadow.mapSize.height = 1024;
+        }
+        scene.add(sunLight);
+
+        // --- 3. Terrain & Water ---
+        const terrainGeo = new THREE.PlaneGeometry(350, 350, isMobile ? 50 : 80, isMobile ? 50 : 80);
+        const pos = terrainGeo.attributes.position;
+        for (let i = 0; i < pos.count; i++) {
+            const x = pos.getX(i);
+            const y = pos.getY(i);
+            let zNoise = Math.sin(x * 0.02) * Math.cos(y * 0.02) * 16;
+            zNoise += Math.sin(x * 0.06) * 4; 
+            const dist = Math.sqrt(x*x + y*y);
+            if(dist < 48) {
+                zNoise = -2;
+            } else {
+                zNoise += (dist - 48) * 0.3;
+            }
+            pos.setZ(i, zNoise);
+        }
+        terrainGeo.computeVertexNormals();
+
+        const terrainMat = new THREE.MeshStandardMaterial({ 
+            color: 0x2e5a1c, 
+            roughness: 0.9,
+            metalness: 0.1,
+            flatShading: true
+        });
+        const terrain = new THREE.Mesh(terrainGeo, terrainMat);
+        terrain.rotation.x = -Math.PI / 2;
+        terrain.receiveShadow = !isMobile;
+        scene.add(terrain);
+
+        const water = new THREE.Mesh(
+            new THREE.PlaneGeometry(95, 95),
+            new THREE.MeshStandardMaterial({ color: 0x0077be, roughness: 0.1, transparent: true, opacity: 0.8 })
+        );
+        water.rotation.x = -Math.PI / 2;
+        water.position.y = -0.5;
+        scene.add(water);
+
+        // Forest Trees
+        const treeGroup = new THREE.Group();
+        const trunkGeo = new THREE.CylinderGeometry(0.2, 0.3, 1.5, 5);
+        const trunkMat = new THREE.MeshStandardMaterial({ color: 0x4a2e16 });
+        const foliageGeo = new THREE.ConeGeometry(1.2, 3.5, 5);
+        const foliageMat = new THREE.MeshStandardMaterial({ color: 0x1e4620, flatShading: true });
+
+        const treeCount = isMobile ? 80 : 180;
+        for (let i = 0; i < treeCount; i++) {
+            const rx = (Math.random() - 0.5) * 280;
+            const rz = (Math.random() - 0.5) * 280;
+            const dist = Math.sqrt(rx*rx + rz*rz);
+            
+            if (dist > 35) {
+                const tree = new THREE.Group();
+                const trunk = new THREE.Mesh(trunkGeo, trunkMat);
+                trunk.position.y = 0.75;
+                const foliage = new THREE.Mesh(foliageGeo, foliageMat);
+                foliage.position.y = 2.5;
+                tree.add(trunk); tree.add(foliage);
+                
+                const heightY = (Math.sin(rx * 0.02) * Math.cos(rz * 0.02) * 16) + (dist - 48) * 0.3;
+                tree.position.set(rx, Math.max(-1, heightY), rz);
+                
+                const scale = 0.8 + Math.random() * 0.6;
+                tree.scale.set(scale, scale, scale);
+                treeGroup.add(tree);
+            }
+        }
+        scene.add(treeGroup);
+
+        // --- 4. Holographic Grid ---
+        const cells = [];
+        const gridSize = 15;
+        const spacing = 3.5;
+        const totalCells = gridSize * gridSize;
+
+        const cellGeo = new THREE.PlaneGeometry(3.2, 3.2);
+        const cellMat = new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.15 });
+        const activeMat = new THREE.MeshStandardMaterial({ 
+            color: 0x00f2ff, 
+            emissive: 0x00f2ff, 
+            emissiveIntensity: 2, 
+            transparent: true, 
+            opacity: 0.8 
+        });
+
+        const mainGrid = new THREE.GridHelper(gridSize * spacing, gridSize, 0x00f2ff, 0xffffff);
+        mainGrid.position.set(0, 0.2, 0);
+        scene.add(mainGrid);
+
+        const startOffset = -((gridSize - 1) * spacing) / 2;
+        for(let r=0; r<gridSize; r++) {
+            for(let c=0; c<gridSize; c++) {
+                const cell = new THREE.Mesh(cellGeo, cellMat.clone());
+                cell.position.set(startOffset + c * spacing, 0.25, startOffset + r * spacing);
+                cell.rotation.x = -Math.PI / 2;
+                cell.userData = { visited: false };
+                scene.add(cell);
+                cells.push(cell);
+            }
+        }
+
+        // --- 5. DRONE MODEL ---
+        function createDrone(ledColor) {
+            const group = new THREE.Group();
+
+            const bodyMat = new THREE.MeshStandardMaterial({ color: 0x27272a, metalness: 0.85, roughness: 0.25 });
+            const frameMat = new THREE.MeshStandardMaterial({ color: 0x18181b, metalness: 0.9, roughness: 0.1 });
+            const neonMat = new THREE.MeshStandardMaterial({ color: ledColor, emissive: ledColor, emissiveIntensity: 3 });
+
+            const body = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.9, 0.45, 6), bodyMat);
+            group.add(body);
+
+            const statusBeacon = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.08, 12), neonMat);
+            statusBeacon.position.y = 0.38;
+            group.add(statusBeacon);
+
+            const beamGeo = new THREE.CylinderGeometry(0.05, 1.8, 16, 12, 1, true);
+            const beamMat = new THREE.MeshBasicMaterial({ color: ledColor, transparent: true, opacity: 0.2, side: THREE.DoubleSide });
+            const beam = new THREE.Mesh(beamGeo, beamMat);
+            beam.position.y = -8.4;
+            group.add(beam);
+
+            const props = [];
+            const numArms = 6;
+            const armRadius = 1.6;
+
+            for (let i = 0; i < numArms; i++) {
+                const angle = (i / numArms) * Math.PI * 2;
+                const ax = Math.cos(angle) * armRadius;
+                const az = Math.sin(angle) * armRadius;
+
+                const armMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, armRadius, 6), frameMat);
+                armMesh.rotation.z = Math.PI / 2;
+                armMesh.rotation.y = -angle;
+                armMesh.position.set(ax / 2, 0, az / 2);
+                group.add(armMesh);
+
+                const prop = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.02, 0.12), new THREE.MeshStandardMaterial({ color: 0x09090b }));
+                prop.position.set(ax, 0.2, az);
+                group.add(prop);
+                props.push(prop);
+            }
+
+            scene.add(group);
+            return { mesh: group, props, beamMat };
+        }
+
+        // --- 6. Swarm Controller ---
+        const drones = [];
+        const colors = [0x00f2ff, 0xff0055, 0x10b981, 0xf59e0b, 0x8b5cf6];
+        let isPaused = false;
+
+        function getNextTarget() {
+            const unvisited = cells.filter(c => !c.userData.visited);
+            return unvisited.length > 0 ? unvisited[Math.floor(Math.random() * unvisited.length)] : cells[Math.floor(Math.random() * cells.length)];
+        }
+
+        for(let i=0; i<5; i++) {
+            const d = createDrone(colors[i]);
+            const altitudeLayer = 6.0 + (i * 1.8);
+            
+            d.mesh.position.set((Math.random()-0.5)*35, altitudeLayer, (Math.random()-0.5)*35);
+            d.tHeight = altitudeLayer;
+            d.targetCell = getNextTarget();
+            d.velocity = new THREE.Vector3();
+            d.maxSpeed = 0.25;
+            d.state = 'moving';
+            d.scanTimer = 0;
+            
+            drones.push(d);
+        }
+
+        // --- 7. Animation Loop ---
+        const dummy = new THREE.Object3D();
+        let visitedCount = 0;
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const dt = clock.getDelta();
+            const et = clock.getElapsedTime();
+
+            document.getElementById('fps-counter').innerText = Math.round(1 / (dt || 0.016));
+
+            if (!isPaused) {
+                let allMoving = true;
+
+                drones.forEach((d, i) => {
+                    d.props.forEach(p => p.rotation.y += 2.2);
+
+                    const targetPos = new THREE.Vector3(d.targetCell.position.x, d.tHeight, d.targetCell.position.z);
+                    const distance = d.mesh.position.distanceTo(targetPos);
+
+                    if (d.state === 'moving') {
+                        let currentMax = d.maxSpeed;
+                        if (distance < 5.0) {
+                            currentMax = d.maxSpeed * (distance / 5.0);
+                            if (currentMax < 0.02) currentMax = 0.02;
+                        }
+
+                        const desired = new THREE.Vector3().subVectors(targetPos, d.mesh.position).normalize().multiplyScalar(currentMax);
+                        d.velocity.lerp(desired, 0.05);
+                        d.mesh.position.add(d.velocity);
+
+                        if (d.velocity.length() > 0.005) {
+                            const lookPt = new THREE.Vector3().copy(d.mesh.position).add(d.velocity);
+                            dummy.position.copy(d.mesh.position);
+                            dummy.lookAt(lookPt.x, d.mesh.position.y, lookPt.z);
+                            d.mesh.quaternion.slerp(dummy.quaternion, 0.08);
+                        }
+
+                        d.mesh.rotation.z = THREE.MathUtils.lerp(d.mesh.rotation.z, -d.velocity.x * 4, 0.1);
+                        d.mesh.rotation.x = THREE.MathUtils.lerp(d.mesh.rotation.x, d.velocity.z * 4, 0.1);
+
+                        if (distance < 0.15) {
+                            d.state = 'scanning';
+                            d.scanTimer = 1.4;
+                            
+                            const statusBadge = document.getElementById('status-text');
+                            statusBadge.innerText = "SCANNING";
+                            statusBadge.style.color = "#10b981";
+                            statusBadge.style.borderColor = "#10b981";
+                        }
+
+                        d.beamMat.opacity = 0.2;
+
+                    } else if (d.state === 'scanning') {
+                        allMoving = false;
+                        d.velocity.set(0,0,0);
+                        
+                        d.mesh.rotation.z = THREE.MathUtils.lerp(d.mesh.rotation.z, 0, 0.1);
+                        d.mesh.rotation.x = THREE.MathUtils.lerp(d.mesh.rotation.x, 0, 0.1);
+
+                        d.beamMat.opacity = 0.25 + Math.sin(et * 16) * 0.15;
+                        d.scanTimer -= dt;
+
+                        if (d.scanTimer <= 0) {
+                            if (!d.targetCell.userData.visited) {
+                                d.targetCell.userData.visited = true;
+                                d.targetCell.material = activeMat;
+                                visitedCount++;
+                                
+                                document.getElementById('cell-count').innerText = visitedCount;
+                                const percentage = (visitedCount / totalCells) * 100;
+                                document.getElementById('progress-fill').style.width = percentage + '%';
+                            }
+                            
+                            d.targetCell = getNextTarget();
+                            d.state = 'moving';
+                        }
+                    }
+
+                    d.mesh.position.y = d.tHeight + Math.sin(et * 2.2 + i) * 0.1;
+                });
+
+                if(allMoving) {
+                    const statusBadge = document.getElementById('status-text');
+                    statusBadge.innerText = "EN ROUTE";
+                    statusBadge.style.color = "#f59e0b";
+                    statusBadge.style.borderColor = "#f59e0b";
+                }
+            }
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        // Control Listeners
+        document.getElementById('btn-pause').addEventListener('click', () => {
+            isPaused = !isPaused;
+            document.getElementById('btn-pause').innerText = isPaused ? "▶ RESUME" : "⏸ PAUSE";
+        });
+
+        document.getElementById('btn-reset').addEventListener('click', () => {
+            visitedCount = 0;
+            cells.forEach(c => {
+                c.userData.visited = false;
+                c.material = cellMat.clone();
+            });
+            document.getElementById('cell-count').innerText = 0;
+            document.getElementById('progress-fill').style.width = '0%';
+        });
+
+        // Dynamic Resize Handling for Mobile Viewport Changes
+        window.addEventListener('resize', () => {
+            const mobile = window.innerWidth <= 600;
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, mobile ? 1.5 : 2));
+        });
+    </script>
+</body>
+</html>
